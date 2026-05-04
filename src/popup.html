@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Furigana Helper Settings</title>
+  <link rel="stylesheet" href="./popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h2>Furigana Helper</h2>
+      <p class="subtitle">Select your processing engine</p>
+    </header>
+    
+    <div class="setting-group">
+      <label class="switch-container">
+        <div class="switch-text">
+          <span class="title">Use Yahoo! JAPAN API</span>
+          <span class="desc">Toggle on for higher accuracy via cloud</span>
+        </div>
+        <div class="switch">
+          <input type="checkbox" id="engine-toggle">
+          <span class="slider round"></span>
+        </div>
+      </label>
+    </div>
+
+    <div class="setting-group" id="api-key-group" style="display: none;">
+      <label for="yahoo-client-id">Yahoo! Client ID</label>
+      <input type="text" id="yahoo-client-id" placeholder="Enter your Client ID" autocomplete="off" spellcheck="false" />
+      <p class="help-text">You can get a free Client ID from the <a href="https://developer.yahoo.co.jp/" target="_blank">Yahoo! JAPAN Developer Network</a>.</p>
+    </div>
+
+    <div class="footer-actions">
+      <button id="save-btn" class="save-btn">Save Settings</button>
+      <div id="status-msg" class="status-msg"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./popup.js"></script>
+</body>
+</html>
