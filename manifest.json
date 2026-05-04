@@ -3,6 +3,11 @@
   "name": "Furigana Helper",
   "version": "1.0.0",
   "description": "Easily view furigana or kanji candidates right above your selected text.",
+  "icons": {
+    "16": "furigana-helper-icon-16.png",
+    "48": "furigana-helper-icon-48.png",
+    "128": "furigana-helper-icon-128.png"
+  },
   "action": {
     "default_popup": "src/popup.html"
   },
