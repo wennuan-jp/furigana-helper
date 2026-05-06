@@ -4,62 +4,81 @@ import './content.css';
 // Regex to check if text contains Kanji characters
 const KANJI_REGEX = /[\u4e00-\u9faf\u3400-\u4dbf]/;
 
-// Listen for mouseup and keyup to capture text selection
-document.addEventListener('mouseup', handleSelection);
-document.addEventListener('keyup', (e) => {
-  // Only check selection on shift-key combinations or arrow keys
-  if (e.key.startsWith('Arrow') || e.shiftKey) {
-    handleSelection();
+// Settings cache
+let settings = {
+  activationKey: 'Control'
+};
+
+// Initial load
+chrome.storage.sync.get({
+  activationKey: 'Control'
+}, (items) => {
+  settings = items;
+});
+
+// Listen for settings changes
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.activationKey) {
+    settings.activationKey = changes.activationKey.newValue;
+  }
+});
+
+// Listen for double-tap of the configured key to trigger furigana
+let lastKeyTap = 0;
+document.addEventListener('keydown', (e) => {
+  if (e.key === settings.activationKey) {
+    const now = Date.now();
+    if (now - lastKeyTap < 300) { // 300ms threshold for double-tap
+      processFuriganaForSelection();
+    }
+    lastKeyTap = now;
   }
 });
 
 let lastProcessedText = "";
 
-function handleSelection() {
-  // Small timeout ensures the selection is fully registered by the browser
-  setTimeout(() => {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-    
-    const text = selection.toString().trim();
+function processFuriganaForSelection() {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return;
+  
+  const text = selection.toString().trim();
 
-    // If no text is selected, or it's the exact same text we just processed, do nothing
-    if (!text || text.length === 0 || text === lastProcessedText) {
-      if (!text) lastProcessedText = ""; // Reset if selection cleared
-      return;
-    }
+  // If no text is selected, or it's the exact same text we just processed, do nothing
+  if (!text || text.length === 0 || text === lastProcessedText) {
+    if (!text) lastProcessedText = ""; // Reset if selection cleared
+    return;
+  }
 
-    // Filter out non-Japanese text (must contain at least one Kanji)
-    if (!KANJI_REGEX.test(text)) {
-      return;
-    }
+  // Filter out non-Japanese text (must contain at least one Kanji)
+  if (!KANJI_REGEX.test(text)) {
+    return;
+  }
 
-    lastProcessedText = text;
-    console.log("Furigana Helper: Kanji detected. Sending to background...", text);
+  lastProcessedText = text;
+  console.log("Furigana Helper: Kanji detected in selection. Sending to background...", text);
 
-    // Capture the exact DOM range of the user's selection
-    const range = selection.getRangeAt(0).cloneRange();
+  // Capture the exact DOM range of the user's selection
+  const range = selection.getRangeAt(0).cloneRange();
 
-    // Send the selected text to background.js
-    try {
-      chrome.runtime.sendMessage(
-        { action: "PROCESS_FURIGANA", text: text },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            console.log("Furigana Helper: Waiting for background script to be fully implemented (Phase 4).");
-            return;
-          }
-          
-          if (response && response.success && response.data) {
-            console.log("Furigana Helper: Received reading, injecting UI...");
-            injectRuby(range, response.data);
-          }
+  // Send the selected text to background.js
+  try {
+    chrome.runtime.sendMessage(
+      { action: "PROCESS_FURIGANA", text: text },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.log("Furigana Helper: Extension context invalidated or background script not ready.");
+          return;
         }
-      );
-    } catch (e) {
-      console.log("Furigana Helper: Extension context invalidated or not ready.");
-    }
-  }, 50);
+        
+        if (response && response.success && response.data) {
+          console.log("Furigana Helper: Received reading, injecting UI...");
+          injectRuby(range, response.data);
+        }
+      }
+    );
+  } catch (e) {
+    console.log("Furigana Helper: Message failed.");
+  }
 }
 
 // Phase 5: UI Injection

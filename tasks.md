@@ -1,56 +1,52 @@
-# Furigana Helper - Chrome Extension Implementation Plan
+- [x] remove Yahoo API feature and delete permission accociated to it for simpler chrome extension review by Google team
+- [x] meet this requirement (Removed scripting permission and audited others)
+デベロッパー様
 
-## Technology Stack Recommendation
+デベロッパー様が最近提出されたアイテムが残念ながら却下されたことをお知らせいたします。詳しくは下記をご覧ください。
 
-This extension will use a hybrid approach, offering an offline engine by default, with an option to upgrade to the Yahoo Japan API for higher accuracy.
 
-1. **Extension Architecture**: **Chrome Extension Manifest V3**.
-2. **Core Languages**: **Vanilla JavaScript (ES6+), HTML, and CSS**.
-3. **Build Tool**: **Vite + @crxjs/vite-plugin**. Required to bundle the offline dictionary files and Node modules.
-4. **Processing Engines (User Selectable)**:
-   - **Engine A: Local Offline (Default)**: Uses `kuroshiro.js` and the `kuromoji` analyzer bundled directly into the extension. It requires no internet and no API keys.
-   - **Engine B: Yahoo! JAPAN API (Optional)**: If the user wants higher accuracy, they can enter their own free Yahoo Client ID in the extension's settings popup to switch to cloud processing.
+アイテム名: Furigana Helper
 
----
+アイテム ID: lhoodmbnejfoagjhkodedkplmfnijfgh.
 
-## Implementation Tasks
+違反:
 
-### Phase 1: Foundation and Build Setup
-- [x] Initialize the project structure using `npm` and Vite.
-- [x] Install `kuroshiro`, `kuroshiro-analyzer-kuromoji`, and `@crxjs/vite-plugin`.
-- [x] Create the `manifest.json` (Manifest V3) with necessary permissions (`activeTab`, `scripting`, `storage`, and host permissions).
+権限の使用:
 
-### Phase 2: Settings Popup UI
-- [x] Create `popup.html`, `popup.css`, and `popup.js`.
-- [x] Build a UI with a toggle switch: "Use Local Engine" vs "Use Yahoo API".
-- [x] Build an input field for the **Yahoo Client ID** (only visible/enabled if Yahoo API is selected).
-- [x] Save the user's preferences to `chrome.storage.sync`.
+違反の参照 ID: Purple Potassium
+違反事項:
+次の権限をリクエストしているが使用していない。
+scripting
+修正方法: 拡張機能の権限を精査します。
+上記の使用していない権限をマニフェスト ファイルから削除します。
+アイテムで要求するその他すべての権限を検証します。アクティブに使用し、アイテムの機能に必要な権限のみ含めるようにしてください。
+プログラム ポリシーの関連セクション:
+製品の機能またはサービスを実装するために必要最小限となる権限へのアクセスをリクエストします。まだ実装していないサービスまたは機能で使用する可能性がある権限を、将来に備える目的でリクエストしないでください。（詳細）
 
-### Phase 3: Content Script & Text Selection
-- [x] Inject `content.js` into pages via `manifest.json`.
-- [x] Implement a listener for `mouseup` or `selectionchange` events to detect user text selection.
-- [x] Filter out non-Japanese text selections (only process text containing Kanji).
-- [x] Send the selected text to `background.js` for processing.
 
-### Phase 4: Dual-Engine Background Processing
-- [x] In `background.js`, load the user's engine preference from storage.
-- [x] **If Local Engine**: Initialize Kuroshiro and use it to process the text.
-- [x] **If Yahoo API**: Make a `fetch` request to the Yahoo Furigana endpoint using the user's stored Client ID.
-- [x] Return the resulting phonetic reading (Furigana) to `content.js`.
+この違反は内部審査の結果、検出されました。 このアイテムに対する操作は自動で処理されました。 違反措置について詳しくは、こちらをご覧ください。 さん
 
-### Phase 5: UI Injection (Non-Destructive Ruby Tags)
-- *Crucial Rule: We NEVER replace the original text meaning. We only add phonetic data ABOVE the text.*
-- [x] In `content.js`, locate the exact DOM `TextNode` of the user's selection.
-- [x] Replace the raw text node with a native HTML `<ruby>` element.
-- [x] **Kanji ➔ Furigana**: Transform `漢字` into `<ruby>漢字<rt>かんじ</rt></ruby>`.
-- [x] Add CSS (`content.css`) to ensure the `<rt>` tags are clearly legible without breaking the page layout.
+誤って処分が適用されたと思われる場合
 
-### Phase 6: Polish and Edge Cases
-- [x] Ensure the DOM manipulation handles complex website layouts gracefully.
-- [x] Handle errors (e.g., if the Yahoo API key is invalid, automatically fallback to the local engine and notify the user).
-- [x] Provide a way to click the modified text to instantly revert it back to a standard text node.
+この決定に誤りがあると思われる場合は、次の手順に沿って再審査請求を開始してください。
 
----
+Chrome ウェブストア デベロッパー ダッシュボードにログインします。
+リストから関連するアイテムを選択します。
+[ビルド] > [ステータス] ページに移動します。
+アイテムの該当のリビジョン（下書きまたは公開バージョン）を見つけます。
+[再審査請求] ボタンをクリックして、審査リクエストを送信します。
+EU に拠点がある場合は、これ以外の利用可能な救済手段をこちらでご確認いただけます。
 
-## Future Optional Features
-- [ ] **Reverse Conversion (Hiragana ➔ Kanji)**: Support Kana-Kanji conversion (e.g., `きこう` ➔ `<ruby>きこう<rt>気候 / 機構</rt></ruby>`). This is delayed for now to prioritize the core Kanji-to-Furigana experience.
+ルーティング ID: FZSL
+
+
+私たちは Chrome ウェブストア へのデベロッパー様の貢献を高く評価しており、デベロッパー様のアイテムが Google のポリシーを遵守するようになるためのお手伝いを喜んでいたします。
+
+よろしくお願い申し上げます。
+
+Chrome ウェブストア デベロッパー サポート
+
+------------------------------------------------------
+デベロッパー向け利用規約
+プログラム ポリシー
+ブランドの取り扱いガイドライン
