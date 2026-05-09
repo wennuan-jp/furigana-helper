@@ -80,3 +80,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep the message channel open for async sendResponse
   }
 });
+
+// Preload the offscreen document when the extension is installed or the browser starts
+chrome.runtime.onInstalled.addListener(setupOffscreenDocument);
+chrome.runtime.onStartup.addListener(setupOffscreenDocument);
+
+// Also try to setup whenever the service worker wakes up
+setupOffscreenDocument();

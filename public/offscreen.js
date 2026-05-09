@@ -49,3 +49,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 });
+
+// Start initialization immediately when the offscreen document loads
+initKuroshiro();
