@@ -76,6 +76,12 @@ function processFuriganaForSelection() {
   // Capture the exact DOM range of the user's selection
   const range = selection.getRangeAt(0).cloneRange();
 
+  // Capture original HTML to restore it later
+  const originalContents = range.cloneContents();
+  const container = document.createElement('div');
+  container.appendChild(originalContents);
+  const originalHtml = container.innerHTML;
+
   // Send the selected text to background.js
   try {
     chrome.runtime.sendMessage(
@@ -90,11 +96,11 @@ function processFuriganaForSelection() {
         if (response && response.success && response.data) {
           console.log("Furigana Helper: Received reading, injecting UI...");
           lastProcessedText = text; // Only mark as processed on success
-          injectRuby(range, response.data);
+          injectRuby(range, response.data, originalHtml);
         } else {
           lastProcessedText = ""; // Reset to allow retry
         }
-      }
+      },
     );
   } catch (e) {
     console.log("Furigana Helper: Message failed.");
@@ -103,17 +109,21 @@ function processFuriganaForSelection() {
 }
 
 // Phase 5: UI Injection
-function injectRuby(range, htmlString) {
+function injectRuby(range, htmlString, originalHtml) {
   // Clear the original text in the range (Non-destructive to meaning, but replaces the raw text node)
   range.deleteContents();
 
-  // Create a document fragment from the HTML string
-  const template = document.createElement('template');
-  // Wrap in a span to apply styling and allow easy reverting later
-  template.innerHTML = `<span class="furigana-helper-injected" data-original-text="${lastProcessedText}">${htmlString}</span>`;
+  // Create a span to apply styling and allow easy reverting later
+  const span = document.createElement('span');
+  span.className = 'furigana-helper-injected';
+  // Store original HTML and text for different use cases
+  span.setAttribute('data-original-text', lastProcessedText);
+  // Use a property to store HTML to avoid attribute length limits and complex escaping issues
+  span._originalHtml = originalHtml;
+  span.innerHTML = htmlString;
   
-  // Insert the new <ruby> nodes seamlessly into the paragraph
-  range.insertNode(template.content);
+  // Insert the new span seamlessly into the paragraph
+  range.insertNode(span);
 
   // Clear the selection so the user doesn't accidentally drag-select the new ruby tags
   window.getSelection().removeAllRanges();
@@ -124,11 +134,26 @@ document.addEventListener('click', (e) => {
   // Find the closest ancestor that is our injected span
   const injectedSpan = e.target.closest('.furigana-helper-injected');
   if (injectedSpan) {
-    const originalText = injectedSpan.getAttribute('data-original-text');
-    if (originalText) {
-      // Revert the span back to the original raw text
-      const textNode = document.createTextNode(originalText);
-      injectedSpan.parentNode.replaceChild(textNode, injectedSpan);
+    const originalHtml = injectedSpan._originalHtml;
+    if (originalHtml !== undefined) {
+      // Create a temporary container to parse the HTML string back into nodes
+      const temp = document.createElement('div');
+      temp.innerHTML = originalHtml;
+      
+      const fragment = document.createDocumentFragment();
+      while (temp.firstChild) {
+        fragment.appendChild(temp.firstChild);
+      }
+      
+      // Revert the span back to the original HTML structure
+      injectedSpan.parentNode.replaceChild(fragment, injectedSpan);
+    } else {
+      // Fallback to text if HTML is not available
+      const originalText = injectedSpan.getAttribute('data-original-text');
+      if (originalText) {
+        const textNode = document.createTextNode(originalText);
+        injectedSpan.parentNode.replaceChild(textNode, injectedSpan);
+      }
     }
   }
 });
