@@ -6,32 +6,49 @@ const KANJI_REGEX = /[\u4e00-\u9faf\u3400-\u4dbf]/;
 
 // Settings cache
 let settings = {
-  activationKey: 'Control'
+  activationMode: 'double-tap',
+  activationKey: 'Control',
+  shortcutConfig: { ctrl: true, alt: false, shift: false, meta: false, key: 'k' }
 };
 
 // Initial load
 chrome.storage.sync.get({
-  activationKey: 'Control'
+  activationMode: 'double-tap',
+  activationKey: 'Control',
+  shortcutConfig: { ctrl: true, alt: false, shift: false, meta: false, key: 'k' }
 }, (items) => {
   settings = items;
 });
 
 // Listen for settings changes
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.activationKey) {
-    settings.activationKey = changes.activationKey.newValue;
-  }
+  Object.keys(changes).forEach(key => {
+    settings[key] = changes[key].newValue;
+  });
 });
 
-// Listen for double-tap of the configured key to trigger furigana
+// Listen for the configured trigger to show furigana
 let lastKeyTap = 0;
 document.addEventListener('keydown', (e) => {
-  if (e.key === settings.activationKey) {
-    const now = Date.now();
-    if (now - lastKeyTap < 300) { // 300ms threshold for double-tap
+  if (settings.activationMode === 'double-tap') {
+    if (e.key === settings.activationKey) {
+      const now = Date.now();
+      if (now - lastKeyTap < 300) { // 300ms threshold for double-tap
+        processFuriganaForSelection();
+      }
+      lastKeyTap = now;
+    }
+  } else if (settings.activationMode === 'shortcut') {
+    const config = settings.shortcutConfig;
+    if (
+      e.ctrlKey === config.ctrl &&
+      e.altKey === config.alt &&
+      e.shiftKey === config.shift &&
+      e.metaKey === config.meta &&
+      e.key.toLowerCase() === config.key.toLowerCase()
+    ) {
       processFuriganaForSelection();
     }
-    lastKeyTap = now;
   }
 });
 
@@ -54,7 +71,6 @@ function processFuriganaForSelection() {
     return;
   }
 
-  lastProcessedText = text;
   console.log("Furigana Helper: Kanji detected in selection. Sending to background...", text);
 
   // Capture the exact DOM range of the user's selection
@@ -67,17 +83,22 @@ function processFuriganaForSelection() {
       (response) => {
         if (chrome.runtime.lastError) {
           console.log("Furigana Helper: Extension context invalidated or background script not ready.");
+          lastProcessedText = ""; // Reset to allow retry
           return;
         }
         
         if (response && response.success && response.data) {
           console.log("Furigana Helper: Received reading, injecting UI...");
+          lastProcessedText = text; // Only mark as processed on success
           injectRuby(range, response.data);
+        } else {
+          lastProcessedText = ""; // Reset to allow retry
         }
       }
     );
   } catch (e) {
     console.log("Furigana Helper: Message failed.");
+    lastProcessedText = ""; // Reset to allow retry
   }
 }
 

@@ -35,20 +35,33 @@ async function setupOffscreenDocument() {
 async function processWithKuroshiro(text) {
   await setupOffscreenDocument();
   
-  return new Promise((resolve, reject) => {
-    chrome.runtime.sendMessage(
-      { action: "PROCESS_FURIGANA_OFFSCREEN", text: text },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else if (response && response.success) {
-          resolve(response.data);
-        } else {
-          reject(new Error(response?.error || "Unknown error processing text locally"));
-        }
+  // Retry mechanism for offscreen communication
+  // This handles the race condition where the document is created but scripts haven't finished loading.
+  for (let i = 0; i < 5; i++) {
+    try {
+      return await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage(
+          { action: "PROCESS_FURIGANA_OFFSCREEN", text: text },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else if (response && response.success) {
+              resolve(response.data);
+            } else {
+              reject(new Error(response?.error || "Unknown error processing text locally"));
+            }
+          }
+        );
+      });
+    } catch (err) {
+      // If we've tried several times, or the error isn't about the message channel, give up.
+      if (i === 4 || !err.message.includes("Could not establish connection")) {
+        throw err;
       }
-    );
-  });
+      console.log(`Furigana Helper: Offscreen message failed, retrying (${i + 1}/5)...`);
+      await new Promise(r => setTimeout(r, 200 * (i + 1))); // Exponential backoff
+    }
+  }
 }
 
 

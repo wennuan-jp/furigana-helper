@@ -17,9 +17,33 @@
     </header>
 
 
-    <div id="key-recorder" class="key-recorder" tabindex="0">
-      <span class="key-display" id="key-display">Control</span>
-      <span class="recorder-hint" id="recorder-hint"> </span>
+    <div class="settings-list">
+      <div class="setting-row" id="row-double-tap" data-mode="double-tap">
+        <div class="mode-info">
+          <div class="radio-circle"></div>
+          <span class="label">Double Click</span>
+        </div>
+        <div class="key-recorder-mini" id="recorder-double-tap">
+          <span class="key-text" id="display-double-tap">Control</span>
+        </div>
+      </div>
+
+      <div class="setting-row" id="row-shortcut" data-mode="shortcut">
+        <div class="mode-info">
+          <div class="radio-circle"></div>
+          <span class="label">Shortcut</span>
+        </div>
+        <div class="key-recorder-mini" id="recorder-shortcut">
+          <span class="key-text" id="display-shortcut">Ctrl + K</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="recorder-overlay" class="recorder-overlay hidden">
+      <div class="overlay-content">
+        <p id="overlay-hint">Press any key</p>
+        <div id="overlay-display" class="overlay-display">...</div>
+      </div>
     </div>
 
     <div id="status-msg" class="status-msg"></div>
