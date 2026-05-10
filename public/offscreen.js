@@ -39,7 +39,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (!isReady) throw new Error("Kuroshiro initialization failed in offscreen context");
         
         // mode "furigana" generates <ruby> tags
-        const resultHtml = await kuroshiroInstance.convert(request.text, { mode: "furigana", to: "hiragana" });
+        let resultHtml = await kuroshiroInstance.convert(request.text, { mode: "furigana", to: "hiragana" });
+        
+        // Post-process to remove useless furigana (where reading == kanji)
+        // e.g., <ruby>惑<rt>惑</rt></ruby> -> 惑
+        resultHtml = resultHtml.replace(/<ruby>(.*?)<rt>\1<\/rt><\/ruby>/g, '$1');
+
         sendResponse({ success: true, data: resultHtml });
       } catch (err) {
         console.error("Offscreen processing error:", err);

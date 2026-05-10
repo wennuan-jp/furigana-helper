@@ -52,17 +52,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-let lastProcessedText = "";
+const resultCache = new Map(); // Global cache to store text -> furiganaHtml mapping
 
 function processFuriganaForSelection() {
   const selection = window.getSelection();
   if (!selection.rangeCount) return;
-  
+
+  // Check if we are already inside an injected span to prevent nested injection
+  const parentElement = selection.anchorNode?.parentElement;
+  if (parentElement?.closest('.furigana-helper-injected')) {
+    console.log("Furigana Helper: Selection is already inside an injected area. Ignoring.");
+    return;
+  }
+
   const text = selection.toString().trim();
 
-  // If no text is selected, or it's the exact same text we just processed, do nothing
-  if (!text || text.length === 0 || text === lastProcessedText) {
-    if (!text) lastProcessedText = ""; // Reset if selection cleared
+  // If no text is selected, do nothing
+  if (!text || text.length === 0) {
     return;
   }
 
@@ -70,8 +76,6 @@ function processFuriganaForSelection() {
   if (!KANJI_REGEX.test(text)) {
     return;
   }
-
-  console.log("Furigana Helper: Kanji detected in selection. Sending to background...", text);
 
   // Capture the exact DOM range of the user's selection
   const range = selection.getRangeAt(0).cloneRange();
@@ -82,6 +86,17 @@ function processFuriganaForSelection() {
   container.appendChild(originalContents);
   const originalHtml = container.innerHTML;
 
+  // Optimization: Check if we have a cached result for this exact text
+  if (resultCache.has(text)) {
+    console.log("Furigana Helper: Cache hit! Using cached reading for:", text);
+    const cachedHtml = resultCache.get(text);
+    // showDebugLog(text, cachedHtml + " (FROM CACHE)");
+    injectRuby(range, cachedHtml, originalHtml, text);
+    return;
+  }
+
+  console.log("Furigana Helper: Kanji detected. Sending to background...", text);
+
   // Send the selected text to background.js
   try {
     chrome.runtime.sendMessage(
@@ -89,27 +104,52 @@ function processFuriganaForSelection() {
       (response) => {
         if (chrome.runtime.lastError) {
           console.log("Furigana Helper: Extension context invalidated or background script not ready.");
-          lastProcessedText = ""; // Reset to allow retry
           return;
         }
-        
+
         if (response && response.success && response.data) {
           console.log("Furigana Helper: Received reading, injecting UI...");
-          lastProcessedText = text; // Only mark as processed on success
-          injectRuby(range, response.data, originalHtml);
-        } else {
-          lastProcessedText = ""; // Reset to allow retry
+          resultCache.set(text, response.data); // Store in cache for future use
+          // showDebugLog(text, response.data);
+          injectRuby(range, response.data, originalHtml, text);
         }
       },
     );
   } catch (e) {
     console.log("Furigana Helper: Message failed.");
-    lastProcessedText = ""; // Reset to allow retry
   }
 }
 
+/*
+// Debug helper to show logs on screen without taking focus
+function showDebugLog(original, result) {
+  let logContainer = document.getElementById('furigana-helper-debug-log');
+  if (!logContainer) {
+    logContainer = document.createElement('div');
+    logContainer.id = 'furigana-helper-debug-log';
+    document.body.appendChild(logContainer);
+  }
+
+  const logEntry = document.createElement('div');
+  logEntry.className = 'debug-log-entry';
+  logEntry.innerHTML = `
+    <div class="debug-label">Selected Text</div>
+    <div style="margin-bottom: 8px;">${original}</div>
+    <div class="debug-label">Result HTML</div>
+    <div class="debug-text-code">${result.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+  `;
+
+  logContainer.prepend(logEntry); // Show newest entries at the top
+
+  // Keep only the last 10 entries to avoid performance issues
+  if (logContainer.children.length > 10) {
+    logContainer.lastElementChild.remove();
+  }
+}
+*/
+
 // Phase 5: UI Injection
-function injectRuby(range, htmlString, originalHtml) {
+function injectRuby(range, htmlString, originalHtml, originalText) {
   // Clear the original text in the range (Non-destructive to meaning, but replaces the raw text node)
   range.deleteContents();
 
@@ -117,11 +157,11 @@ function injectRuby(range, htmlString, originalHtml) {
   const span = document.createElement('span');
   span.className = 'furigana-helper-injected';
   // Store original HTML and text for different use cases
-  span.setAttribute('data-original-text', lastProcessedText);
+  span.setAttribute('data-original-text', originalText);
   // Use a property to store HTML to avoid attribute length limits and complex escaping issues
   span._originalHtml = originalHtml;
   span.innerHTML = htmlString;
-  
+
   // Insert the new span seamlessly into the paragraph
   range.insertNode(span);
 
@@ -139,12 +179,12 @@ document.addEventListener('click', (e) => {
       // Create a temporary container to parse the HTML string back into nodes
       const temp = document.createElement('div');
       temp.innerHTML = originalHtml;
-      
+
       const fragment = document.createDocumentFragment();
       while (temp.firstChild) {
         fragment.appendChild(temp.firstChild);
       }
-      
+
       // Revert the span back to the original HTML structure
       injectedSpan.parentNode.replaceChild(fragment, injectedSpan);
     } else {
